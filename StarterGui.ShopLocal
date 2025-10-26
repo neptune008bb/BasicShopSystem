@@ -1,0 +1,235 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local shopRequest = ReplicatedStorage:WaitForChild("ShopRequest")
+local shopResponse = ReplicatedStorage:WaitForChild("ShopResponse")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "WeaponsShopGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Main"
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Size = UDim2.new(0.98, 0, 0.7, 0) 
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Parent = screenGui
+
+
+local aspect = Instance.new("UIAspectRatioConstraint")
+aspect.AspectRatio = 1 
+aspect.Parent = mainFrame
+
+
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0.1, 0) 
+title.Position = UDim2.new(0, 0, 0.02, 0)
+title.BackgroundTransparency = 1
+title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.Text = "Weapons Shop"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Parent = mainFrame
+
+
+local coinsLabel = Instance.new("TextLabel")
+coinsLabel.Name = "CoinsLabel"
+coinsLabel.Size = UDim2.new(1, 0, 0.08, 0)
+coinsLabel.Position = UDim2.new(0, 0, 0.14, 0)
+coinsLabel.BackgroundTransparency = 1
+coinsLabel.Text = "Coins: ..."
+coinsLabel.TextScaled = true
+coinsLabel.TextColor3 = Color3.fromRGB(255,255,255)
+coinsLabel.Font = Enum.Font.SourceSans
+coinsLabel.Parent = mainFrame
+
+
+local invLabel = Instance.new("TextLabel")
+invLabel.Name = "InvLabel"
+invLabel.Size = UDim2.new(1, 0, 0.06, 0)
+invLabel.Position = UDim2.new(0, 0, 0.23, 0)
+invLabel.BackgroundTransparency = 1
+invLabel.Text = "Inventory:"
+invLabel.TextColor3 = Color3.fromRGB(200,200,200)
+invLabel.Font = Enum.Font.SourceSansItalic
+invLabel.TextXAlignment = Enum.TextXAlignment.Left
+invLabel.TextScaled = true
+invLabel.Parent = mainFrame
+
+
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Name = "ShopList"
+scrolling.Size = UDim2.new(1, -0, 0.72, 0)
+scrolling.Position = UDim2.new(0, 0, 0.28, 0)
+scrolling.CanvasSize = UDim2.new(0,0,0,0)
+scrolling.ScrollBarThickness = 8
+scrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrolling.BackgroundTransparency = 1
+scrolling.Parent = mainFrame
+
+
+local uiList = Instance.new("UIListLayout")
+uiList.Name = "UILIST"
+uiList.Parent = scrolling
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0.02, 0)
+
+
+
+local function clearChildren(parent)
+	for _, c in ipairs(parent:GetChildren()) do
+		if not c:IsA("UIListLayout") then
+			c:Destroy()
+		end
+	end
+end
+
+
+
+local function updateCoins()
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats and leaderstats:FindFirstChild("Coins") then
+		coinsLabel.Text = "Coins: " .. tostring(leaderstats.Coins.Value)
+	else
+		coinsLabel.Text = "Coins: 0"
+	end
+end
+
+
+local function updateInventoryDisplay()
+	local inv = player:FindFirstChild("Inventory")
+	if not inv then
+		invLabel.Text = "Inventory: (none)"
+		return
+	end
+	local names = {}
+	for _, v in ipairs(inv:GetChildren()) do
+		if v:IsA("StringValue") then
+			table.insert(names, v.Value)
+		end
+	end
+	if #names == 0 then
+		invLabel.Text = "Inventory: (none)"
+	else
+		invLabel.Text = "Inventory: " .. table.concat(names, ", ")
+	end
+end
+
+local function makeItemEntry(item)
+	
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, 0, 0, 66)
+	entry.BackgroundTransparency = 0.3
+	entry.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	entry.LayoutOrder = 1
+	
+	local name = Instance.new("TextLabel")
+	name.Size = UDim2.new(0.6, -8, 0, 24)
+	name.Position = UDim2.new(0, 8, 0, 6)
+	name.BackgroundTransparency = 1
+	name.Text = item.Name
+	name.Font = Enum.Font.SourceSansBold
+	name.TextColor3 = Color3.fromRGB(255,255,255)
+	name.TextScaled = false
+	name.Parent = entry
+	
+	local price = Instance.new("TextLabel")
+	price.Size = UDim2.new(0.4, -8, 0, 24)
+	price.Position = UDim2.new(0.6, 0, 0, 6)
+	price.BackgroundTransparency = 1
+	price.Text = tostring(item.Price) .. "c"
+	price.TextXAlignment = Enum.TextXAlignment.Right
+	price.Font = Enum.Font.SourceSans
+	price.TextColor3 = Color3.fromRGB(220,220,220)
+	price.Parent = entry
+	
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(0.75, -8, 0, 28)
+	desc.Position = UDim2.new(0, 8, 0, 30)
+	desc.BackgroundTransparency = 1
+	desc.Text = item.Description
+	desc.TextWrapped = true
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.TextYAlignment = Enum.TextYAlignment.Top
+	desc.Font = Enum.Font.SourceSans
+	desc.TextColor3 = Color3.fromRGB(200,200,200)
+	desc.TextSize = 14
+	desc.Parent = entry
+	
+	local buyBtn = Instance.new("TextButton")
+	buyBtn.Size = UDim2.new(0.25, -8, 0, 32)
+	buyBtn.Position = UDim2.new(0.75, 4, 0, 30)
+	buyBtn.Text = "Buy"
+	buyBtn.Font = Enum.Font.SourceSansBold
+	buyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+	buyBtn.Parent = entry
+	buyBtn.MouseButton1Click:Connect(function()
+		shopRequest:FireServer("Buy", item.Id)
+	end)
+	return entry
+end
+
+local function requestCatalog()
+	shopRequest:FireServer("GetCatalog")
+end
+
+shopResponse.OnClientEvent:Connect(function(tag, payload)
+	if tag == "Catalog" then
+		clearChildren(scrolling)
+		for i, item in ipairs(payload) do
+			local entry = makeItemEntry(item)
+			entry.Parent = scrolling
+		end
+		updateCoins()
+		updateInventoryDisplay()
+	elseif tag == "Bought" then
+		-- payload is item
+		updateCoins()
+		updateInventoryDisplay()
+
+		local msg = Instance.new("TextLabel")
+		msg.Size = UDim2.new(0.8, 0, 0, 30)
+		msg.Position = UDim2.new(0.1, 0, 0.85, 0)
+		msg.BackgroundTransparency = 0.4
+		msg.Text = "Purchased: " .. payload.Name
+		msg.Parent = mainFrame
+		delay(1.6, function() msg:Destroy() end)
+	elseif tag == "Error" then
+		--quick error display should only happen when they dont have rnough coins
+		local msg = Instance.new("TextLabel")
+		msg.Size = UDim2.new(0.8, 0, 0, 30)
+		msg.Position = UDim2.new(0.1, 0, 0.85, 0)
+		msg.BackgroundTransparency = 0.4
+		msg.Text = "Error: " .. tostring(payload)
+		msg.Parent = mainFrame
+		delay(2.4, function() msg:Destroy() end)
+	end
+end)
+
+player.ChildAdded:Connect(function(child)
+	if child.Name == "leaderstats" then
+		child.ChildAdded:Connect(function(stat)
+			if stat.Name == "Coins" then
+				stat.Changed:Connect(updateCoins)
+			end
+		end)
+	elseif child.Name == "Inventory" then
+		child.ChildAdded:Connect(function() updateInventoryDisplay() end)
+		child.ChildRemoved:Connect(function() updateInventoryDisplay() end)
+	end
+end)
+
+requestCatalog()
+
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.H then
+		shopRequest:FireServer("TestGrantCoins")
+	end
+end)
