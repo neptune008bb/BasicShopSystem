@@ -1,0 +1,65 @@
+-- Stores shop items and helper functions
+local ShopModule = {}
+
+ShopModule.Items = {
+	{
+		Id = "sword_basic",
+		Name = "Wooden Sword",
+		Price = 50,
+		Description = "A basic wooden sword. Good for practice.",
+		Damage = 10,
+	},
+	{
+		Id = "sword_iron",
+		Name = "Iron Sword",
+		Price = 150,
+		Description = "A sturdy iron blade.",
+		Damage = 25,
+	},
+	{
+		Id = "bow_basic",
+		Name = "Short Bow",
+		Price = 120,
+		Description = "Ranges for ranged combat.",
+		Damage = 18,
+	},
+	{
+		Id = "shield_small",
+		Name = "Small Shield",
+		Price = 100,
+		Description = "Reduces incoming damage slightly.",
+		Damage = 0,
+	},
+}
+
+
+local idIndex = {}
+for i, item in ipairs(ShopModule.Items) do
+	idIndex[item.Id] = item
+end
+
+function ShopModule.GetItemById(id)
+	return idIndex[id]
+end
+
+function ShopModule.GetAllItems()
+	local out = {}
+	for i, v in ipairs(ShopModule.Items) do
+		table.insert(out, v)
+	end
+	return out
+end
+
+function ShopModule.CanPlayerBuy(player, item)
+	if not player or not item then return false, "Invalid arguments" end
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then return false, "No leaderstats" end
+	local coins = leaderstats:FindFirstChild("Coins")
+	if not coins then return false, "No coins stat" end
+	if coins.Value < item.Price then
+		return false, "Not enough coins"
+	end
+	return true
+end
+
+return ShopModule
