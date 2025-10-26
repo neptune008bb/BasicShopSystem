@@ -1,0 +1,102 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+
+local ShopModule = require(ReplicatedStorage:WaitForChild("ShopModule"))
+
+local shopRequest = ReplicatedStorage:FindFirstChild("ShopRequest")
+
+if not shopRequest then
+	shopRequest = Instance.new("RemoteEvent")
+	shopRequest.Name = "ShopRequest"
+	shopRequest.Parent = ReplicatedStorage
+end
+
+local shopResponse = ReplicatedStorage:FindFirstChild("ShopResponse")
+
+if not shopResponse then
+	shopResponse = Instance.new("RemoteEvent")
+	shopResponse.Name = "ShopResponse"
+	shopResponse.Parent = ReplicatedStorage
+end
+
+
+local function createLeaderstats(player)
+	local folder = Instance.new("Folder")
+	folder.Name = "leaderstats"
+	folder.Parent = player
+	local coins = Instance.new("IntValue")
+	coins.Name = "Coins"
+	coins.Value = 300 -- starting coins for testing
+	coins.Parent = folder
+end
+
+
+local function createInventory(player)
+	local inv = Instance.new("Folder")
+	inv.Name = "Inventory"
+	inv.Parent = player
+end
+
+
+local function addItemToInventory(player, itemId)
+	if not player or not itemId then return false, "Invalid args" end
+	local inv = player:FindFirstChild("Inventory")
+	if not inv then return false, "No inventory" end
+	local entry = Instance.new("StringValue")
+	entry.Name = itemId .. "_" .. tostring(os.time()) .. "_" ..
+		tostring(math.random(1,9999))
+	entry.Value = itemId
+	entry.Parent = inv
+	return true
+end
+
+-- Handle purchases
+shopRequest.OnServerEvent:Connect(function(player, action, data)
+	-- action: "GetCatalog", "Buy"
+	if action == "GetCatalog" then
+		local items = ShopModule.GetAllItems()
+		shopResponse:FireClient(player, "Catalog", items)
+		return
+	end
+	if action == "Buy" then
+		if type(data) ~= "string" then
+			shopResponse:FireClient(player, "Error", "Invalid item id")
+			return
+		end
+		local item = ShopModule.GetItemById(data)
+		if not item then
+			shopResponse:FireClient(player, "Error", "Item not found")
+			return
+		end
+		local canBuy, reason = ShopModule.CanPlayerBuy(player, item)
+		if not canBuy then
+			shopResponse:FireClient(player, "Error", reason)
+			return
+		end
+		-- Deduct coins and give item
+		local coins =
+			player:FindFirstChild("leaderstats"):FindFirstChild("Coins")
+		coins.Value = coins.Value - item.Price
+		local ok, msg = addItemToInventory(player, item.Id)
+		if not ok then
+			shopResponse:FireClient(player, "Error", "Failed to add item:" .. tostring(msg))
+				return
+		end
+		shopResponse:FireClient(player, "Bought", item)
+		return
+	end
+	-- unknown action, shouldnt happen at all
+	shopResponse:FireClient(player, "Error", "Unknown action")
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	createLeaderstats(player)
+	createInventory(player)
+end)
+
+-- For studio testing
+if RunService:IsStudio() then
+	print("ShopServer initialized (Studio mode). Players start with 300 coins.")
+end
